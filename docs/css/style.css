@@ -1,0 +1,23 @@
+body {
+    background: #EEE;
+}
+
+.valign-wrapper {
+    height: 100%;
+}
+
+.card {
+    text-align: center;
+}
+
+.margin-top {
+    margin-top: 20px;
+}
+
+.card-action.card-title {
+    padding-bottom: 0;
+}
+
+.btn-large {
+    font-weight: 600;
+}
