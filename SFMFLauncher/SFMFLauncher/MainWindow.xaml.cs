@@ -8,12 +8,14 @@ using SFMFLauncher.Util;
 using Supremes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -59,6 +61,11 @@ namespace SFMFLauncher
 
         private void RefreshButtonStates()
         {
+            if (PgbLoad.Value != 0 || PgbLoad.IsIndeterminate)
+            {
+                BtnInstallFramework.IsEnabled = BtnInstallMod.IsEnabled = BtnUninstallFramework.IsEnabled = BtnUninstallMod.IsEnabled = BtnRefreshInstalled.IsEnabled = BtnRefreshMods.IsEnabled = LbxInstalled.IsEnabled = LbxMods.IsEnabled = false;
+                return;
+            }
             bool Installed = IsFrameworkInstalled();
             BtnInstallFramework.IsEnabled = !Installed;
             BtnUninstallFramework.IsEnabled = BtnRefreshMods.IsEnabled = BtnRefreshInstalled.IsEnabled = BtnInstallMod.IsEnabled = BtnUninstallMod.IsEnabled = LbxMods.IsEnabled = LbxInstalled.IsEnabled = Installed;
@@ -71,8 +78,16 @@ namespace SFMFLauncher
         private void BtnInstallFramework_Click(object sender, RoutedEventArgs e)
         {
             ChangeState(false);
-            Inject();
-            ReturnState();
+            PgbLoad.Value = 25;
+            RefreshButtonStates();
+
+            new Thread(() =>
+            {
+                Inject();
+            }).Start();
+
+            PgbLoad.IsIndeterminate = false;
+            PgbLoad.Value = 0;
             RefreshButtonStates();
         }
 
@@ -99,16 +114,30 @@ namespace SFMFLauncher
                 if (!Directory.Exists(GetPluginDirectory()))
                     Directory.CreateDirectory(GetPluginDirectory());
                 Plugin plugin = LbxMods.SelectedItem as Plugin;
+                PgbLoad.IsIndeterminate = true;
+                RefreshButtonStates();
                 using (var client = new WebClient())
                     try
                     {
-                        client.DownloadFile(new Uri(plugin.Download), $"{GetPluginDirectory()}/{plugin.Name}.dll");
-                        RefreshInstalled();
-                    } catch
+                        client.DownloadFileCompleted += OnFileDownloadComplete;
+                        client.DownloadFileAsync(new Uri(plugin.Download), $"{GetPluginDirectory()}/{plugin.Name}.dll");
+                    }
+                    catch
                     {
+                        PgbLoad.IsIndeterminate = false;
+                        PgbLoad.Value = 0;
+                        RefreshButtonStates();
                         MessageBox.Show("Failed to download mod, please try again later");
                     }
             }
+        }
+
+        private void OnFileDownloadComplete(object sender, AsyncCompletedEventArgs e)
+        {
+            PgbLoad.IsIndeterminate = false;
+            PgbLoad.Value = 0;
+            RefreshButtonStates();
+            RefreshInstalled();
         }
 
         private void BtnUninstallMod_Click(object sender, RoutedEventArgs e)
@@ -201,19 +230,28 @@ namespace SFMFLauncher
         private void RefreshMods()
         {
             LbxMods.Items.Clear();
-
-            string html;
+            PgbLoad.IsIndeterminate = true;
+            RefreshButtonStates();
+            
             using (var client = new WebClient())
             {
-                html = client.DownloadString(SettingsURL);
-                Supremes.Nodes.Document document = Dcsoup.Parse(html);
-                string json = document.GetElementsByClass("blob-wrapper").Text;
-                Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
-                foreach (Plugin plugin in settings.modlist)
-                {
-                    LbxMods.Items.Add(plugin);
-                }
+                client.DownloadStringCompleted += OnStringDownloadComplete;
+                client.DownloadStringAsync(new Uri(SettingsURL));
             }
+        }
+
+        private void OnStringDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
+        {
+            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
+            string json = document.GetElementsByClass("blob-wrapper").Text;
+            Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+            foreach (Plugin plugin in settings.modlist)
+            {
+                    LbxMods.Items.Add(plugin);
+            }
+            PgbLoad.IsIndeterminate = false;
+            PgbLoad.Value = 0;
+            RefreshButtonStates();
         }
 
         private void RefreshInstalled()
@@ -241,12 +279,16 @@ namespace SFMFLauncher
         
         private void Inject()
         {
-            if (!Reinstalling)
-            {
-                List<string> managed = Directory.GetFiles(GetManagedLocation()).Where(x => (x.Contains("UnityEngine") || x.Contains("AmplifyMotion") || x.Contains("Assembly-CSharp.") || x.Contains("Mono.Security")) && x.EndsWith(".dll")).ToList();
-                foreach (string file in managed)
+            List<string> managed = Directory.GetFiles(GetManagedLocation()).Where(x => (x.Contains("UnityEngine") || x.Contains("AmplifyMotion") || x.Contains("Assembly-CSharp.") || x.Contains("Mono.Security")) && x.EndsWith(".dll")).ToList();
+            foreach (string file in managed)
+                if (!Reinstalling || !File.Exists(file.Substring(file.LastIndexOf("\\") + 1)))
                     File.Copy(file, file.Substring(file.LastIndexOf("\\") + 1), true);
-            }
+
+            Dispatcher.Invoke(new Action(delegate ()
+            {
+                PgbLoad.Value = 25;
+                RefreshButtonStates();
+            }));
 
             Merge(GetAssemblyLocation(), GetAssemblyBackupLocation(), "./SFMF.dll");
             Inject(GetAssemblyLocation());
@@ -273,6 +315,12 @@ namespace SFMFLauncher
 
             var repack = new ILRepack(options);
             repack.Repack();
+
+            Dispatcher.Invoke(new Action(delegate ()
+            {
+                PgbLoad.Value = 75;
+                RefreshButtonStates();
+            }));
         }
 
         private void Inject(string asmLoc)
@@ -293,6 +341,13 @@ namespace SFMFLauncher
             imSubmitCombo.MethodDef.Body.Instructions.Insert(0, imSubmitCombo.MethodDef.Body.GetILProcessor().Create(OpCodes.Ret));
 
             asmDef.Write(asmLoc);
+
+            Dispatcher.Invoke(new Action(delegate ()
+            {
+                PgbLoad.IsIndeterminate = false;
+                PgbLoad.Value = 0;
+                RefreshButtonStates();
+            }));
         }
 
 

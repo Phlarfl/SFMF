@@ -19,6 +19,6 @@
         <Button x:Name="BtnRefreshInstalled" Content="Refresh Installed List" Margin="10,47,9,0" IsEnabled="False" Height="32" VerticalAlignment="Top" Grid.Column="1" Click="BtnRefreshInstalled_Click"/>
         <ListBox x:Name="LbxMods" Margin="10,84,10,65" SelectionChanged="LbxMods_SelectionChanged" SelectionMode="Extended"/>
         <ListBox x:Name="LbxInstalled" Margin="10,84,10,65" SelectionMode="Extended" Grid.Column="1" SelectionChanged="LbxInstalled_SelectionChanged"/>
-        <ProgressBar Margin="10,0,10,10" Grid.ColumnSpan="2" Height="13" VerticalAlignment="Bottom"/>
+        <ProgressBar x:Name="PgbLoad" Margin="10,0,10,10" Grid.ColumnSpan="2" Height="13" VerticalAlignment="Bottom"/>
     </Grid>
 </Window>
