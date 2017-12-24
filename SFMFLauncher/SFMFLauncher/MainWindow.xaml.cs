@@ -34,6 +34,7 @@ namespace SFMFLauncher
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly int[] Version = new int[] { 1, 1, 0 };
         private const string SettingsURL = "https://gist.github.com/Phlarfl/e504a0ac94fd004ec02ebaaccd3aa335";
         private const string SteamRegistry = @"HKEY_CURRENT_USER\Software\Valve\Steam";
         private const string SteamConfig = "config/config.vdf";
@@ -51,6 +52,12 @@ namespace SFMFLauncher
         public MainWindow()
         {
             InitializeComponent();
+
+            using (var client = new WebClient())
+            {
+                client.DownloadStringCompleted += OnSettingsDownloadComplete;
+                client.DownloadStringAsync(new Uri(SettingsURL));
+            }
 
             AbsoluteInstallDirectory = GetAbsoluteInstallDirectory();
 
@@ -130,14 +137,6 @@ namespace SFMFLauncher
                         MessageBox.Show("Failed to download mod, please try again later");
                     }
             }
-        }
-
-        private void OnFileDownloadComplete(object sender, AsyncCompletedEventArgs e)
-        {
-            PgbLoad.IsIndeterminate = false;
-            PgbLoad.Value = 0;
-            RefreshButtonStates();
-            RefreshInstalled();
         }
 
         private void BtnUninstallMod_Click(object sender, RoutedEventArgs e)
@@ -238,20 +237,6 @@ namespace SFMFLauncher
                 client.DownloadStringCompleted += OnStringDownloadComplete;
                 client.DownloadStringAsync(new Uri(SettingsURL));
             }
-        }
-
-        private void OnStringDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
-        {
-            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
-            string json = document.GetElementsByClass("blob-wrapper").Text;
-            Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
-            foreach (Plugin plugin in settings.modlist)
-            {
-                    LbxMods.Items.Add(plugin);
-            }
-            PgbLoad.IsIndeterminate = false;
-            PgbLoad.Value = 0;
-            RefreshButtonStates();
         }
 
         private void RefreshInstalled()
@@ -369,6 +354,42 @@ namespace SFMFLauncher
         private string GetPluginDirectory()
         {
             return $"{AbsoluteInstallDirectory}/{PluginDirectory}";
+        }
+
+        private void OnFileDownloadComplete(object sender, AsyncCompletedEventArgs e)
+        {
+            PgbLoad.IsIndeterminate = false;
+            PgbLoad.Value = 0;
+            RefreshButtonStates();
+            RefreshInstalled();
+        }
+
+        private void OnStringDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
+        {
+            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
+            string json = document.GetElementsByClass("blob-wrapper").Text;
+            Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+            foreach (Plugin plugin in settings.modlist)
+            {
+                LbxMods.Items.Add(plugin);
+            }
+            PgbLoad.IsIndeterminate = false;
+            PgbLoad.Value = 0;
+            RefreshButtonStates();
+        }
+
+        private void OnSettingsDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
+        {
+            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
+            string json = document.GetElementsByClass("blob-wrapper").Text;
+            Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
+            if (settings.version[0] > Version[0] ||
+                (settings.version[0] == Version[0] && settings.version[1] > Version[1]) ||
+                (settings.version[0] == Version[0] && settings.version[1] == Version[1] && settings.version[2] > Version[2]))
+            {
+                MessageBox.Show("There is a newer version of the SFMF Launcher, please update to get the latest features");
+                Process.Start("https://phlarfl.github.io/SFMF");
+            }
         }
     }
 }
