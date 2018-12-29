@@ -2,7 +2,6 @@
 using Microsoft.Win32;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
-using SFMF;
 using SFMFLauncher.Injection;
 using SFMFLauncher.Util;
 using Supremes;
@@ -14,18 +13,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace SFMFLauncher
 {
@@ -34,12 +24,14 @@ namespace SFMFLauncher
     /// </summary>
     public partial class MainWindow : Window
     {
+        private const string Game = "SuperFlight";
+
         private readonly int[] Version = new int[] { 1, 1, 0 };
-        private const string SettingsURL = "https://gist.github.com/Phlarfl/e504a0ac94fd004ec02ebaaccd3aa335";
+        private const string SettingsURL = "https://gist.github.com/Phlarfl/e504a0ac94fd004ec02ebaaccd3aa335/raw";
         private const string SteamRegistry = @"HKEY_CURRENT_USER\Software\Valve\Steam";
         private const string SteamConfig = "config/config.vdf";
-        private const string InstallDirectory = "steamapps/common/SuperFlight";
-        private const string ManagedDirectory = "superflight_Data/Managed";
+        private string InstallDirectory = $"steamapps/common/{Game}";
+        private string ManagedDirectory = $"{Game.ToLower()}_Data/Managed";
         private const string AssemblyLib = "Assembly-CSharp.dll";
         private const string PluginDirectory = "plugins";
         private const string PluginExt = "dll";
@@ -366,8 +358,8 @@ namespace SFMFLauncher
 
         private void OnStringDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
         {
-            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
-            string json = document.GetElementsByClass("blob-wrapper").Text;
+            //Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
+            string json = e.Result.ToString();//document.GetElementsByClass("blob-wrapper").Text;
             Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
             foreach (Plugin plugin in settings.modlist)
             {
@@ -380,8 +372,8 @@ namespace SFMFLauncher
 
         private void OnSettingsDownloadComplete(object sender, DownloadStringCompletedEventArgs e)
         {
-            Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
-            string json = document.GetElementsByClass("blob-wrapper").Text;
+            //Supremes.Nodes.Document document = Dcsoup.Parse(e.Result.ToString());
+            string json = e.Result.ToString();//document.GetElementsByClass("blob-wrapper").Text;
             Settings settings = Newtonsoft.Json.JsonConvert.DeserializeObject<Settings>(json);
             if (settings.version[0] > Version[0] ||
                 (settings.version[0] == Version[0] && settings.version[1] > Version[1]) ||
