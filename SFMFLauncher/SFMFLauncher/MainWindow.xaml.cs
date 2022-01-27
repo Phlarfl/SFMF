@@ -26,7 +26,7 @@ namespace SFMFLauncher
     {
         private const string Game = "SuperFlight";
 
-        private readonly int[] Version = new int[] { 1, 1, 0 };
+        private readonly int[] Version = new int[] { 1, 2, 0 };
         private const string SettingsURL = "https://gist.github.com/Phlarfl/e504a0ac94fd004ec02ebaaccd3aa335/raw";
         private const string SteamRegistry = @"HKEY_CURRENT_USER\Software\Valve\Steam";
         private const string SteamConfig = "config/libraryfolders.vdf";
