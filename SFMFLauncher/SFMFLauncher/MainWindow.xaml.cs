@@ -29,7 +29,7 @@ namespace SFMFLauncher
         private readonly int[] Version = new int[] { 1, 1, 0 };
         private const string SettingsURL = "https://gist.github.com/Phlarfl/e504a0ac94fd004ec02ebaaccd3aa335/raw";
         private const string SteamRegistry = @"HKEY_CURRENT_USER\Software\Valve\Steam";
-        private const string SteamConfig = "config/config.vdf";
+        private const string SteamConfig = "config/libraryfolders.vdf";
         private string InstallDirectory = $"steamapps/common/{Game}";
         private string ManagedDirectory = $"{Game.ToLower()}_Data/Managed";
         private const string AssemblyLib = "Assembly-CSharp.dll";
@@ -197,7 +197,6 @@ namespace SFMFLauncher
             if (steam != null)
             {
                 List<string> paths = new List<string>();
-                paths.Add(steam);
                 string[] lines = File.ReadAllLines($"{steam}/{SteamConfig}");
                 VDFPopulate(paths, lines, 1);
                 foreach (var path in paths)
@@ -210,11 +209,10 @@ namespace SFMFLauncher
         private void VDFPopulate(List<string> paths, string[] lines, int index)
         {
             foreach (string line in lines)
-                if (line.Trim().StartsWith($"\"BaseInstallFolder_{index}\""))
+                if (line.Trim().StartsWith($"\"path\""))
                 {
                     string path = line.Trim().Split('\t')[2];
                     paths.Add(path.Substring(1, path.Length - 2).Replace("\\\\", "/"));
-                    VDFPopulate(paths, lines, index + 1);
                 }
         }
 
@@ -256,7 +254,7 @@ namespace SFMFLauncher
         
         private void Inject()
         {
-            List<string> managed = Directory.GetFiles(GetManagedLocation()).Where(x => (x.Contains("UnityEngine") || x.Contains("AmplifyMotion") || x.Contains("Assembly-CSharp.") || x.Contains("Mono.Security")) && x.EndsWith(".dll")).ToList();
+            List<string> managed = Directory.GetFiles(GetManagedLocation()).Where(x => (x.Contains("UnityEngine") || x.Contains("Assembly-CSharp.") || x.Contains("Mono.Security")) && x.EndsWith(".dll")).ToList();
             foreach (string file in managed)
                 if (!Reinstalling || !File.Exists(file.Substring(file.LastIndexOf("\\") + 1)))
                     File.Copy(file, file.Substring(file.LastIndexOf("\\") + 1), true);
